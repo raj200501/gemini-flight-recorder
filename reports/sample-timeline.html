@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gemini Flight Recorder - sample timeline</title>
+  <style>
+    body { margin: 0; font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17212b; background: #eef2f7; }
+    main { max-width: 880px; margin: 0 auto; padding: 32px 24px; }
+    section { background: #fff; border: 1px solid #d8dde3; border-radius: 8px; padding: 20px; }
+    h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: 0; }
+    .status { display: inline-block; margin: 16px 0; padding: 6px 10px; border-radius: 999px; background: #bf1d1d; color: #fff; font-weight: 700; }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Gemini Flight Recorder</h1>
+    <p>Failure timeline for refund-001</p>
+    <section>
+      <div class="status">Status: FAILURE_DETECTED</div>
+      <h2>Top failures</h2>
+      <ol>
+        <li>Final answer claimed refund completion after the refund tool timed out.</li>
+        <li>Agent fetched all customers for a single-ticket refund.</li>
+        <li>Destructive refund tool executed without approval event.</li>
+      </ol>
+    </section>
+  </main>
+</body>
+</html>
+

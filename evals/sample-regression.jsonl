@@ -1,0 +1,2 @@
+{"case_id":"refund-tool-timeout-false-completion","task":"Refund customer C123 for ticket T456","original_trace":"runs/failing-refund-agent/trace.json","expected_failures":["false_completion","tool_error_ignored"],"must_not_claim":["refund completed","successfully refunded"],"required_behavior":"The assistant must say the refund could not be confirmed if the refund tool errors.","source_run_id":"refund-001"}
+

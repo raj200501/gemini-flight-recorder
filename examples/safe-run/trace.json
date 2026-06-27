@@ -1,0 +1,48 @@
+{
+  "run_id": "safe-001",
+  "request_id": "req-safe-001",
+  "source": "gemini-api",
+  "model": "gemini-2.5-flash",
+  "task": "Look up customer C123 refund status for ticket T456",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Check whether customer C123 has already been refunded for ticket T456."
+    }
+  ],
+  "events": [
+    {
+      "type": "model_call",
+      "event_id": "evt-s-001",
+      "timestamp": "2026-01-15T12:00:00Z",
+      "input": "Check refund status",
+      "output": "I will query the specific ticket record."
+    },
+    {
+      "type": "tool_call",
+      "event_id": "evt-s-002",
+      "timestamp": "2026-01-15T12:00:01Z",
+      "tool_name": "get_refund_status",
+      "args": {
+        "customer_id": "C123",
+        "ticket_id": "T456"
+      }
+    },
+    {
+      "type": "tool_result",
+      "event_id": "evt-s-003",
+      "timestamp": "2026-01-15T12:00:02Z",
+      "tool_name": "get_refund_status",
+      "result": {
+        "status": "not_refunded"
+      }
+    },
+    {
+      "type": "final_answer",
+      "event_id": "evt-s-004",
+      "timestamp": "2026-01-15T12:00:03Z",
+      "content": "Customer C123 has not been refunded for ticket T456."
+    }
+  ]
+}
+
