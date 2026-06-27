@@ -11,7 +11,7 @@ from rich.table import Table
 
 from . import __version__
 from .detectors import detect_trace
-from .importers import dump_model, import_trace, load_run, write_json
+from .importers import SUPPORTED_FORMATS, dump_model, import_trace, load_run, write_json
 from .models import status_for_detections
 from .promote import promote_run
 from .replay import replay_run, summarize_original_answer, summarize_replay_answer
@@ -28,10 +28,14 @@ console = Console()
 @app.command("import")
 def import_command(
     trace_path: Path = typer.Argument(..., help="Public JSON trace to import."),
+    trace_format: str = typer.Option("generic", "--format", help="Import adapter: generic, gemini-json, or ai-studio-loglike."),
     out: Path = typer.Option(..., "--out", "-o", help="Run directory to write."),
 ) -> None:
-    trace = import_trace(trace_path, out)
+    if trace_format not in SUPPORTED_FORMATS:
+        raise typer.BadParameter(f"Use one of: {', '.join(sorted(SUPPORTED_FORMATS))}.", param_hint="--format")
+    trace = import_trace(trace_path, out, trace_format)
     console.print(f"Imported: {trace_path}")
+    console.print(f"Format: {trace_format}")
     console.print(f"Run: {out / 'trace.json'}")
     console.print(f"Run id: {trace.run_id or 'unknown-run'}")
 
@@ -99,30 +103,53 @@ def promote(
 @app.command()
 def demo() -> None:
     console.print("[bold]Gemini Flight Recorder[/bold]\n")
-    trace_path = Path("examples/failing-refund-agent/trace.json")
-    run_dir = Path("runs/failing-refund-agent")
-    prompt_path = Path("examples/failing-refund-agent/prompt_tighter.md")
-    regression_path = Path("evals/refund_failure_regression.jsonl")
+    cases = [
+        {
+            "name": "refund false completion",
+            "trace": Path("examples/failing-refund-agent/trace.json"),
+            "run": Path("runs/failing-refund-agent"),
+            "prompt": Path("examples/failing-refund-agent/prompt_tighter.md"),
+            "regression": Path("evals/refund_failure_regression.jsonl"),
+        },
+        {
+            "name": "unsupported evidence claim",
+            "trace": Path("examples/unsupported-research-agent/trace.json"),
+            "run": Path("runs/unsupported-research-agent"),
+            "prompt": None,
+            "regression": Path("evals/unsupported_evidence_regression.jsonl"),
+        },
+        {
+            "name": "prompt injection followed",
+            "trace": Path("examples/prompt-injection-agent/trace.json"),
+            "run": Path("runs/prompt-injection-agent"),
+            "prompt": None,
+            "regression": Path("evals/prompt_injection_regression.jsonl"),
+        },
+    ]
 
-    trace = import_trace(trace_path, run_dir)
-    detections = detect_trace(trace)
-    report_paths = generate_reports(run_dir, trace, Path("reports"))
-    result = replay_run(trace, run_dir, mode="mock", prompt_path=prompt_path)
-    promote_run(trace, run_dir, regression_path)
+    for index, case in enumerate(cases, start=1):
+        trace_path = case["trace"]
+        run_dir = case["run"]
+        prompt_path = case["prompt"]
+        regression_path = case["regression"]
 
-    console.print(f"Imported: {trace_path}")
-    console.print(f"Status: {status_for_detections(detections)}")
-    console.print("Failure labels:")
-    for detection in detections:
-        console.print(f"  - {detection.label}")
-    console.print("\nTimeline:")
-    console.print(f"  {report_paths['timeline_html']}")
-    console.print(f"  {report_paths['timeline_md']}")
-    console.print("\nReplay:")
-    console.print(f"  original: {summarize_original_answer(result.original_final_answer)}")
-    console.print(f"  replay: {summarize_replay_answer(result.replay_final_answer)}")
-    console.print("\nRegression test written:")
-    console.print(f"  {regression_path}")
+        trace = import_trace(trace_path, run_dir, "generic")
+        detections = detect_trace(trace)
+        result = replay_run(trace, run_dir, mode="mock", prompt_path=prompt_path)
+        promote_run(trace, run_dir, regression_path)
+        report_paths = generate_reports(run_dir, trace, Path("reports"))
+
+        console.print(f"{index}. {case['name']}")
+        console.print(f"   Imported: {trace_path}")
+        console.print(f"   Status: {status_for_detections(detections)}")
+        console.print("   Failure labels:")
+        for detection in detections:
+            console.print(f"     - {detection.label}")
+        console.print(f"   Timeline: {report_paths['timeline_html']}")
+        console.print(f"   Regression: {regression_path}")
+        console.print(f"   Replay: {summarize_original_answer(result.original_final_answer)} -> {summarize_replay_answer(result.replay_final_answer)}")
+        if index != len(cases):
+            console.print("")
 
 
 @app.command()
@@ -153,4 +180,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

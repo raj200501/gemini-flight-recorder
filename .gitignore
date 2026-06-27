@@ -9,4 +9,5 @@ dist/
 /reports/*/
 /evals/refund_failure_regression.jsonl
 /evals/refund_regression.jsonl
-
+/evals/unsupported_evidence_regression.jsonl
+/evals/prompt_injection_regression.jsonl

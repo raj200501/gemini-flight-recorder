@@ -1,0 +1,29 @@
+{
+  "run_id": "research-unsupported-001",
+  "request_id": "req-research-unsupported-001",
+  "source": "gemini-api",
+  "model": "gemini-2.5-flash",
+  "task": "Answer whether the vendor contract allows refunds after 30 days",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Review the vendor contract and tell me whether refunds are allowed after 30 days. Please cite the source."
+    }
+  ],
+  "events": [
+    {
+      "type": "model_call",
+      "event_id": "evt-u-001",
+      "timestamp": "2026-01-16T09:00:00Z",
+      "input": "Review the vendor contract and cite the answer",
+      "output": "I can answer from the contract summary."
+    },
+    {
+      "type": "final_answer",
+      "event_id": "evt-u-002",
+      "timestamp": "2026-01-16T09:00:01Z",
+      "content": "Verified against the source: refunds after 30 days are not allowed according to the document."
+    }
+  ]
+}
+

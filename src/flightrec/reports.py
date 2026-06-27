@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -29,7 +30,9 @@ def generate_reports(run_dir: Path, trace: Trace, output_root: Path = Path("repo
     report_dir.mkdir(parents=True, exist_ok=True)
 
     annotations = _annotations_by_event(detections)
-    timeline = _timeline_payload(trace, detections, annotations)
+    replay_summary = _load_json(run_dir / "replay.json")
+    regression_summary = _load_json(run_dir / "regression.json")
+    timeline = _timeline_payload(trace, detections, annotations, replay_summary, regression_summary)
 
     paths = {
         "timeline_json": report_dir / "timeline.json",
@@ -39,8 +42,8 @@ def generate_reports(run_dir: Path, trace: Trace, output_root: Path = Path("repo
     }
     write_json(paths["timeline_json"], timeline)
     write_json(paths["detections"], [dump_model(detection) for detection in detections])
-    paths["timeline_md"].write_text(render_markdown(trace, detections, annotations))
-    paths["timeline_html"].write_text(render_html(trace, detections, annotations))
+    paths["timeline_md"].write_text(render_markdown(trace, detections, annotations, replay_summary, regression_summary))
+    paths["timeline_html"].write_text(render_html(trace, detections, annotations, replay_summary, regression_summary))
     return paths
 
 
@@ -48,6 +51,8 @@ def render_markdown(
     trace: Trace,
     detections: list[Detection],
     annotations: dict[int, list[Detection]] | None = None,
+    replay_summary: dict[str, Any] | None = None,
+    regression_summary: dict[str, Any] | None = None,
 ) -> str:
     annotations = annotations or _annotations_by_event(detections)
     status = status_for_detections(detections)
@@ -65,6 +70,20 @@ def render_markdown(
             lines.append(f"{index}. **{detection.label}** - {detection.detail}")
     else:
         lines.append("No failures detected.")
+
+    if replay_summary:
+        lines.extend(
+            [
+                "",
+                "## Replay summary",
+                "",
+                f"- before: `{replay_summary.get('before_status', 'unknown')}`",
+                f"- after: `{replay_summary.get('after_status', 'unknown')}`",
+                f"- replay: {replay_summary.get('replay_final_answer', '')}",
+            ]
+        )
+    if regression_summary:
+        lines.extend(["", "## Regression case", "", f"- path: `{regression_summary.get('path', 'unknown')}`"])
 
     lines.extend(["", "## Timeline", ""])
     for index, event in enumerate(trace.events):
@@ -92,6 +111,8 @@ def render_html(
     trace: Trace,
     detections: list[Detection],
     annotations: dict[int, list[Detection]] | None = None,
+    replay_summary: dict[str, Any] | None = None,
+    regression_summary: dict[str, Any] | None = None,
 ) -> str:
     annotations = annotations or _annotations_by_event(detections)
     template = Template(HTML_TEMPLATE)
@@ -101,6 +122,8 @@ def render_html(
         status=status_for_detections(detections),
         annotations=annotations,
         event_body=_event_body,
+        replay_summary=replay_summary,
+        regression_summary=regression_summary,
     )
 
 
@@ -108,6 +131,8 @@ def _timeline_payload(
     trace: Trace,
     detections: list[Detection],
     annotations: dict[int, list[Detection]],
+    replay_summary: dict[str, Any] | None,
+    regression_summary: dict[str, Any] | None,
 ) -> dict[str, Any]:
     return {
         "run_id": trace.run_id,
@@ -116,6 +141,8 @@ def _timeline_payload(
         "task": trace.task,
         "status": status_for_detections(detections),
         "detections": [dump_model(detection) for detection in detections],
+        "replay": replay_summary,
+        "regression": regression_summary,
         "events": [
             {
                 **dump_model(event),
@@ -155,6 +182,15 @@ def _event_body(event: Any) -> str:
     if event.type == "final_answer":
         return event.content or event.output or ""
     return event.content or event.output or event.input or ""
+
+
+def _load_json(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return None
 
 
 HTML_TEMPLATE = """<!doctype html>
@@ -251,6 +287,25 @@ HTML_TEMPLATE = """<!doctype html>
       font-size: 14px;
       margin-bottom: 2px;
     }
+    .artifact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .artifact {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .artifact strong {
+      display: block;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
     .timeline {
       position: relative;
       display: grid;
@@ -314,6 +369,7 @@ HTML_TEMPLATE = """<!doctype html>
     .badge.low { background: #edf7ee; border-color: #b7dfbd; color: #0c5c2a; }
     @media (max-width: 780px) {
       .summary { grid-template-columns: 1fr; }
+      .artifact-grid { grid-template-columns: 1fr; }
       .event { grid-template-columns: 1fr; gap: 8px; }
       .wrap { padding: 22px 16px; }
     }
@@ -327,6 +383,10 @@ HTML_TEMPLATE = """<!doctype html>
       <div class="summary">
         <section class="panel">
           <span class="status {% if status == 'PASS' %}pass{% elif status == 'REVIEW_RECOMMENDED' %}review{% endif %}">Status: {{ status }}</span>
+          <div class="artifact-grid">
+            <div class="artifact"><strong>Run id</strong>{{ trace.run_id or "unknown-run" }}</div>
+            <div class="artifact"><strong>Model / source</strong>{{ trace.model }} / {{ trace.source }}</div>
+          </div>
           <h2>Top failures</h2>
           {% if detections %}
           <ol>
@@ -337,8 +397,26 @@ HTML_TEMPLATE = """<!doctype html>
           {% else %}
           <p>No failures detected.</p>
           {% endif %}
+          {% if replay_summary or regression_summary %}
+          <div class="artifact-grid">
+            {% if replay_summary %}
+            <div class="artifact">
+              <strong>Replay</strong>
+              {{ replay_summary.before_status }} -> {{ replay_summary.after_status }}<br>
+              {{ replay_summary.replay_final_answer }}
+            </div>
+            {% endif %}
+            {% if regression_summary %}
+            <div class="artifact">
+              <strong>Regression case</strong>
+              {{ regression_summary.path }}
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
         </section>
         <aside class="panel meta-grid">
+          <div><strong>Run id</strong>{{ trace.run_id or "unknown-run" }}</div>
           <div><strong>Model</strong>{{ trace.model }}</div>
           <div><strong>Source</strong>{{ trace.source }}</div>
           <div><strong>Task</strong>{{ trace.task }}</div>
@@ -376,4 +454,3 @@ HTML_TEMPLATE = """<!doctype html>
 </body>
 </html>
 """
-

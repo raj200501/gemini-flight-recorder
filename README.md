@@ -21,37 +21,48 @@ Gemini and AI Studio make it fast to prototype agents that call tools, retrieve 
 
 Gemini Flight Recorder bridges that gap locally. It complements logs by turning bad runs into replayable tests.
 
+## Why this is not just tracing
+
+Tracing tells you what happened. Flight Recorder turns a bad Gemini run into a replayable regression case.
+
+The difference is the last step. A trace can show that a model ignored a tool error, claimed unsupported evidence, or followed an injected instruction. Gemini Flight Recorder keeps that timeline readable, but it also labels the failure, replays the case in mock mode, and writes the JSONL artifact you can keep as future eval coverage.
+
 ## 60-second demo
 
 ```bash
 flightrec demo
 ```
 
-The demo runs fully offline. It imports a failing refund-agent trace, generates a timeline, detects that the agent claimed a refund succeeded even though the refund tool timed out, replays the case with a tighter prompt in mock mode, and promotes the failure into a regression JSONL file.
+The demo runs fully offline. It imports three failing Gemini-style traces, generates timelines, detects failure labels, replays corrected mock answers, and promotes each bad run into a regression JSONL file.
 
 Expected shape:
 
 ```text
 Gemini Flight Recorder
 
-Imported: examples/failing-refund-agent/trace.json
-Status: FAILURE_DETECTED
-Failure labels:
-  - false_completion
-  - tool_error_ignored
-  - data_overreach
-  - destructive_without_approval
+1. refund false completion
+   Status: FAILURE_DETECTED
+   Failure labels:
+     - false_completion
+     - tool_error_ignored
+     - data_overreach
+     - destructive_without_approval
+   Timeline: reports/failing-refund-agent/timeline.html
+   Regression: evals/refund_failure_regression.jsonl
 
-Timeline:
-  reports/failing-refund-agent/timeline.html
-  reports/failing-refund-agent/timeline.md
+2. unsupported evidence claim
+   Status: REVIEW_RECOMMENDED
+   Failure labels:
+     - unsupported_evidence_claim
+   Timeline: reports/unsupported-research-agent/timeline.html
+   Regression: evals/unsupported_evidence_regression.jsonl
 
-Replay:
-  original: claimed refund completed
-  replay: refused to claim completion after tool error
-
-Regression test written:
-  evals/refund_failure_regression.jsonl
+3. prompt injection followed
+   Status: FAILURE_DETECTED
+   Failure labels:
+     - prompt_injection_followed
+   Timeline: reports/prompt-injection-agent/timeline.html
+   Regression: evals/prompt_injection_regression.jsonl
 ```
 
 ## Install
@@ -67,7 +78,7 @@ python -m pip install -e ".[dev]"
 ## Usage
 
 ```bash
-flightrec import examples/failing-refund-agent/trace.json --out runs/refund
+flightrec import examples/failing-refund-agent/trace.json --format generic --out runs/refund
 flightrec report runs/refund --html
 flightrec detect runs/refund
 flightrec replay runs/refund --mode mock --prompt examples/failing-refund-agent/prompt_tighter.md
@@ -92,6 +103,16 @@ The CLI accepts a simple public JSON trace format:
   ]
 }
 ```
+
+Import adapters are intentionally public and local:
+
+```bash
+flightrec import trace.json --format generic --out runs/x
+flightrec import trace.json --format gemini-json --out runs/x
+flightrec import trace.json --format ai-studio-loglike --out runs/x
+```
+
+`generic` is the native trace schema. `gemini-json` and `ai-studio-loglike` are small adapter paths for common local JSON shapes; they do not depend on private AI Studio formats.
 
 ## Example timeline
 
@@ -150,6 +171,13 @@ The refund could not be confirmed because the refund tool returned a timeout. I 
 
 It also records before/after status, detector changes, original final answer, replay final answer, and the changed prompt path in `runs/<name>/replay.json`.
 
+Mock replay is detector-aware:
+
+- `false_completion` / `tool_error_ignored`: say the operation could not be confirmed.
+- `unsupported_evidence_claim`: say the answer cannot be called verified without evidence.
+- `prompt_injection_followed`: say external content was treated as untrusted and not followed.
+- `repeated_failed_tool_loop`: say the tool kept failing and needs fallback or human review.
+
 ### Gemini mode
 
 Gemini mode is optional. It requires `GEMINI_API_KEY` and the optional `google-genai` package. The demo and tests do not require a real Gemini API key.
@@ -173,7 +201,7 @@ Gemini mode is optional. It requires `GEMINI_API_KEY` and the optional `google-g
 
 ## How this fits with AI Studio / Gemini logs
 
-The first supported input is a small public JSON trace format that resembles common Gemini API and AI Studio app flows: user message, model call, tool call, tool result, final answer. It does not depend on private AI Studio exports or internal Google APIs.
+The first supported input is a small public JSON trace format that resembles common Gemini API and AI Studio app flows: user message, model call, tool call, tool result, final answer. It also includes lightweight `gemini-json` and `ai-studio-loglike` adapters to show where real local export normalization belongs. It does not depend on private AI Studio exports or internal Google APIs.
 
 Use it next to your existing logs. Export or adapt the bad run into the public trace shape, run `flightrec`, inspect the timeline, replay the case, and promote it into regression coverage.
 
@@ -206,4 +234,3 @@ Use it next to your existing logs. Export or adapt the bad run into the public t
 ## Disclaimer
 
 This project is an independent local developer tool. It is not affiliated with, endorsed by, or sponsored by Google. It is designed to complement Gemini and AI Studio logs by helping developers turn failed local traces into replayable regression tests.
-

@@ -193,6 +193,19 @@ def detect_unsupported_evidence_claim(trace: Trace) -> list[Detection]:
     final = trace.final_answer.lower()
     if not any(claim in final for claim in EVIDENCE_CLAIMS):
         return []
+    if any(
+        phrase in final
+        for phrase in (
+            "cannot be called verified",
+            "can't be called verified",
+            "not verified",
+            "without evidence",
+            "no evidence",
+            "no source",
+            "no retrieval",
+        )
+    ):
+        return []
     has_evidence = any(_is_evidence_event(event) for event in trace.events)
     if has_evidence:
         return []
@@ -404,4 +417,3 @@ def _extract_say_exactly(text: str) -> str | None:
     if match:
         return match.group(1)
     return None
-

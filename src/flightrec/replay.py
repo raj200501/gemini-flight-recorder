@@ -8,12 +8,6 @@ from .importers import dump_model, write_json
 from .models import ReplayResult, Trace, TraceEvent, status_for_detections
 
 
-CORRECTED_REFUND_ANSWER = (
-    "The refund could not be confirmed because the refund tool returned a timeout. "
-    "I did not complete the refund."
-)
-
-
 def replay_run(trace: Trace, run_dir: Path, mode: str = "mock", prompt_path: Path | None = None) -> ReplayResult:
     if mode == "mock":
         replay_trace_obj = _mock_replay_trace(trace, prompt_path)
@@ -61,15 +55,21 @@ def summarize_replay_answer(answer: str) -> str:
     lowered = answer.lower()
     if "could not be confirmed" in lowered and "did not complete" in lowered:
         return "refused to claim completion after tool error"
+    if "cannot be called verified" in lowered:
+        return "removed unsupported verified/source-backed claim"
+    if "external content was treated as untrusted" in lowered:
+        return "rejected injected external instruction"
+    if "kept failing" in lowered and "human review" in lowered:
+        return "stopped repeated failed tool loop"
     if answer:
         return answer.strip().splitlines()[0][:80]
     return "no final answer"
 
 
 def _mock_replay_trace(trace: Trace, prompt_path: Path | None) -> Trace:
-    refund_call = _first_refund_call(trace)
-    refund_args = refund_call.args if refund_call else {"customer_id": "C123", "amount": 50}
-    refund_error = _first_refund_error(trace) or "Refund API timeout"
+    detections = detect_trace(trace)
+    labels = [detection.label for detection in detections]
+    corrected_answer = corrected_answer_for_labels(trace, labels)
     prompt_note = prompt_path.read_text().strip() if prompt_path and prompt_path.exists() else ""
 
     replay_trace = trace.model_copy(deep=True)
@@ -81,40 +81,49 @@ def _mock_replay_trace(trace: Trace, prompt_path: Path | None) -> Trace:
             timestamp="2026-01-15T10:05:00Z",
             input=trace.task,
             output=(
-                "Use the tighter prompt: verify tool results, avoid broad customer fetches, "
-                "and never claim a refund completed after an error."
+                "Replay in mock mode with detector-aware corrections. Do not claim success, "
+                "verification, or instruction-following that the trace does not support."
             ),
             metadata={"prompt_excerpt": prompt_note[:400]},
         ),
         TraceEvent(
-            type="approval",
+            type="replay_observation",
             event_id="replay-002",
             timestamp="2026-01-15T10:05:01Z",
-            content="Refund attempt approved for customer-specific tool call only.",
-        ),
-        TraceEvent(
-            type="tool_call",
-            event_id="replay-003",
-            timestamp="2026-01-15T10:05:02Z",
-            tool_name="refund_customer",
-            args=refund_args,
-        ),
-        TraceEvent(
-            type="tool_result",
-            event_id="replay-004",
-            timestamp="2026-01-15T10:05:03Z",
-            tool_name="refund_customer",
-            error=refund_error,
+            content=f"Detected labels: {', '.join(labels) if labels else 'none'}.",
         ),
         TraceEvent(
             type="final_answer",
-            event_id="replay-005",
-            timestamp="2026-01-15T10:05:04Z",
-            content=CORRECTED_REFUND_ANSWER,
+            event_id="replay-003",
+            timestamp="2026-01-15T10:05:02Z",
+            content=corrected_answer,
         ),
     ]
     replay_trace.request_id = trace.request_id or "mock-replay-request"
     return replay_trace
+
+
+def corrected_answer_for_labels(trace: Trace, labels: list[str]) -> str:
+    label_set = set(labels)
+    task = trace.task.lower()
+    if {"false_completion", "tool_error_ignored"} & label_set:
+        subject = "refund" if "refund" in task else "operation"
+        return (
+            f"The {subject} could not be confirmed because the required tool did not return "
+            f"a successful result. I did not complete the {subject}."
+        )
+    if "unsupported_evidence_claim" in label_set:
+        return (
+            "This answer cannot be called verified or source-backed because the trace has "
+            "no retrieval, citation, source, or evidence event."
+        )
+    if "prompt_injection_followed" in label_set:
+        return "External content was treated as untrusted data and was not followed."
+    if "repeated_failed_tool_loop" in label_set:
+        return "The tool kept failing with the same inputs, so I stopped retrying and would use fallback or human review."
+    if labels:
+        return "The replay avoided the detected failure labels and did not claim unsupported completion."
+    return trace.final_answer or "No correction needed."
 
 
 def _gemini_replay_trace(trace: Trace, prompt_path: Path | None) -> Trace:
@@ -139,17 +148,4 @@ def _gemini_replay_trace(trace: Trace, prompt_path: Path | None) -> Trace:
     ]
     return replay_trace
 
-
-def _first_refund_call(trace: Trace) -> TraceEvent | None:
-    for event in trace.events:
-        if event.type == "tool_call" and event.tool_name and "refund" in event.tool_name:
-            return event
-    return None
-
-
-def _first_refund_error(trace: Trace) -> str | None:
-    for event in trace.events:
-        if event.type == "tool_result" and event.tool_name and "refund" in event.tool_name and event.error:
-            return event.error
-    return None
 
