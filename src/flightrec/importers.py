@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from .models import Message, Trace, TraceEvent
 
 
@@ -26,9 +28,25 @@ def dump_model(model: Any) -> dict[str, Any]:
 SUPPORTED_FORMATS = {"generic", "gemini-json", "ai-studio-loglike"}
 
 
+class TraceImportError(ValueError):
+    """Raised when a trace cannot be read or normalized."""
+
+
 def load_trace(path: Path, trace_format: str = "generic") -> Trace:
-    data = json.loads(path.read_text())
-    trace = normalize_trace_data(data, trace_format)
+    try:
+        raw = path.read_text()
+    except FileNotFoundError as exc:
+        raise TraceImportError(f"Trace file not found: {path}") from exc
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise TraceImportError(f"Malformed JSON in {path}: {exc.msg} at line {exc.lineno}, column {exc.colno}.") from exc
+    if not isinstance(data, dict):
+        raise TraceImportError(f"Trace root must be a JSON object: {path}")
+    try:
+        trace = normalize_trace_data(data, trace_format)
+    except ValidationError as exc:
+        raise TraceImportError(f"Trace does not match the {trace_format} schema: {exc}") from exc
     return _normalize_trace(trace)
 
 
@@ -53,7 +71,7 @@ def import_trace(trace_path: Path, out_dir: Path, trace_format: str = "generic")
 def normalize_trace_data(data: dict[str, Any], trace_format: str = "generic") -> Trace:
     if trace_format not in SUPPORTED_FORMATS:
         choices = ", ".join(sorted(SUPPORTED_FORMATS))
-        raise ValueError(f"Unsupported import format '{trace_format}'. Use one of: {choices}.")
+        raise TraceImportError(f"Unsupported import format '{trace_format}'. Use one of: {choices}.")
     if trace_format == "generic":
         return _from_generic(data)
     if trace_format == "gemini-json":

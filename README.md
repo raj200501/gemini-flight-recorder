@@ -73,6 +73,7 @@ cd gemini-flight-recorder
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
+make verify
 ```
 
 ## Usage
@@ -84,6 +85,7 @@ flightrec detect runs/refund
 flightrec replay runs/refund --mode mock --prompt examples/failing-refund-agent/prompt_tighter.md
 flightrec promote runs/refund --out evals/refund_regression.jsonl
 flightrec doctor
+flightrec version
 ```
 
 The CLI accepts a simple public JSON trace format:
@@ -114,6 +116,16 @@ flightrec import trace.json --format ai-studio-loglike --out runs/x
 
 `generic` is the native trace schema. `gemini-json` and `ai-studio-loglike` are small adapter paths for common local JSON shapes; they do not depend on private AI Studio formats.
 
+CLI output is concise by default and can be tuned for local or CI use:
+
+```bash
+flightrec detect runs/refund --quiet
+flightrec detect runs/refund --verbose
+flightrec detect runs/refund --strict
+```
+
+Normal commands exit `0` when the tool ran successfully, even when findings exist. `--strict` exits nonzero when the resulting status is not `PASS`, which makes the command usable as a CI readiness signal.
+
 ## Example timeline
 
 `flightrec report` writes:
@@ -137,6 +149,8 @@ Top failures:
 ```
 
 Sample artifacts live in `reports/sample-timeline.html` and `reports/sample-timeline.md`.
+
+Schema notes live in `docs/spec.md`, with machine-readable schemas in `schemas/`.
 
 ## Failure detectors
 
@@ -163,7 +177,7 @@ Mock mode is required and works offline:
 flightrec replay runs/refund --mode mock --prompt examples/failing-refund-agent/prompt_tighter.md
 ```
 
-For the refund demo, mock replay produces the corrected final answer:
+For a refund-tool timeout, mock replay produces a corrected final answer:
 
 ```text
 The refund could not be confirmed because the refund tool returned a timeout. I did not complete the refund.
@@ -214,6 +228,27 @@ Use it next to your existing logs. Export or adapt the bad run into the public t
 - It does not require a Gemini API key for the demo.
 - It does not send traces to a remote service.
 
+## Credibility and limitations
+
+Gemini Flight Recorder checks deterministic trace-level patterns:
+
+- whether final-answer completion language conflicts with failed or missing tool confirmation;
+- whether tool errors are omitted from the final answer;
+- whether narrow tasks use broad data access patterns;
+- whether destructive tool calls have prior approval-like events;
+- whether grounding or citation language has source/evidence events;
+- whether obvious prompt-injection text appears to influence the final answer;
+- whether the same failed tool call repeats with unchanged arguments;
+- whether a tool-using trace has enough identifiers and timestamps to correlate the run.
+
+It does not check live Gemini behavior, execute tools, inspect private AI Studio exports, rate source quality, or prove that an answer is correct. It uses public/local JSON artifacts only.
+
+False positives can come from unusual negation, app-level approval checks that are not represented in the trace, custom evidence fields the adapter does not recognize, or broad tools that are appropriate for a specific app. False negatives can come from subtle implied completion, prompt injection that does not repeat a clear phrase, evidence events that exist but are low quality, or retry loops that change arguments slightly.
+
+The detectors are static heuristics. Mock replay is deterministic runtime behavior that rewrites the final answer from detector labels; Gemini replay is optional and only runs when `GEMINI_API_KEY` is set. Production-grade use would need app-specific detector configuration, stronger tool relevance matching, evidence provenance checks, and integration with the app's own eval runner.
+
+This is not official Google tooling. It does not guarantee safety, security, correctness, compliance, or production readiness. It is a local development tool for turning representative bad runs into replayable regression cases.
+
 ## Design principles
 
 - Failure-first: start from a concrete bad run.
@@ -230,6 +265,34 @@ Use it next to your existing logs. Export or adapt the bad run into the public t
 - Add config files for detector tuning.
 - Add richer replay traces for multi-tool agents.
 - Add eval runners that consume the generated JSONL directly.
+
+## Reproducibility
+
+From a fresh clone:
+
+```bash
+git clone https://github.com/raj200501/gemini-flight-recorder.git
+cd gemini-flight-recorder
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+make verify
+```
+
+Useful targets:
+
+```bash
+make demo
+make reports
+make clean
+```
+
+Additional docs:
+
+- `docs/spec.md`
+- `docs/failure_modes.md`
+- `docs/evaluation.md`
+- `docs/suite.md`
 
 ## Disclaimer
 

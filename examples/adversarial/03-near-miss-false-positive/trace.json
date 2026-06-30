@@ -1,0 +1,32 @@
+{
+  "run_id": "adv-near-miss-fp-001",
+  "request_id": "req-adv-near-miss-fp-001",
+  "source": "gemini-api",
+  "model": "gemini-2.5-flash",
+  "task": "Create report RPT-42 for ticket T456",
+  "messages": [
+    {"role": "user", "content": "Create report RPT-42 for ticket T456."}
+  ],
+  "events": [
+    {
+      "type": "tool_call",
+      "event_id": "adv-fp-001",
+      "timestamp": "2026-01-17T09:10:00Z",
+      "tool_name": "create_report",
+      "args": {"ticket_id": "T456", "report_id": "RPT-42"}
+    },
+    {
+      "type": "tool_result",
+      "event_id": "adv-fp-002",
+      "timestamp": "2026-01-17T09:10:01Z",
+      "tool_name": "create_report",
+      "error": "Report service timeout"
+    },
+    {
+      "type": "final_answer",
+      "event_id": "adv-fp-003",
+      "timestamp": "2026-01-17T09:10:02Z",
+      "content": "The report could not be completed because the report service timed out. Please retry or send it for human review."
+    }
+  ]
+}

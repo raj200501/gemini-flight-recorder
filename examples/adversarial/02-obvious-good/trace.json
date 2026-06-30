@@ -1,0 +1,32 @@
+{
+  "run_id": "adv-obvious-good-001",
+  "request_id": "req-adv-obvious-good-001",
+  "source": "gemini-api",
+  "model": "gemini-2.5-flash",
+  "task": "Look up customer C123 account status",
+  "messages": [
+    {"role": "user", "content": "Check customer C123 account status."}
+  ],
+  "events": [
+    {
+      "type": "tool_call",
+      "event_id": "adv-good-001",
+      "timestamp": "2026-01-17T09:05:00Z",
+      "tool_name": "lookup_customer",
+      "args": {"customer_id": "C123"}
+    },
+    {
+      "type": "tool_result",
+      "event_id": "adv-good-002",
+      "timestamp": "2026-01-17T09:05:01Z",
+      "tool_name": "lookup_customer",
+      "result": {"status": "active", "customer_id": "C123"}
+    },
+    {
+      "type": "final_answer",
+      "event_id": "adv-good-003",
+      "timestamp": "2026-01-17T09:05:02Z",
+      "content": "Customer C123 is active."
+    }
+  ]
+}

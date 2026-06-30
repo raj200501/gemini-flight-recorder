@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/gemini-flight-recorder/trace.schema.json",
+  "title": "Gemini Flight Recorder Trace",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["source", "model", "task", "events"],
+  "properties": {
+    "schema_version": {"type": "string", "default": "flightrec.trace.v1"},
+    "run_id": {"type": ["string", "null"]},
+    "request_id": {"type": ["string", "null"]},
+    "source": {"type": "string"},
+    "model": {"type": "string"},
+    "task": {"type": "string"},
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["role"],
+        "properties": {
+          "role": {"type": "string"},
+          "content": {"type": "string"}
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["type"],
+        "properties": {
+          "type": {"type": "string"},
+          "event_id": {"type": ["string", "null"]},
+          "timestamp": {"type": ["string", "null"]},
+          "role": {"type": ["string", "null"]},
+          "content": {"type": ["string", "null"]},
+          "input": {"type": ["string", "null"]},
+          "output": {"type": ["string", "null"]},
+          "tool_name": {"type": ["string", "null"]},
+          "args": {"type": "object"},
+          "result": true,
+          "error": {"type": ["string", "null"]},
+          "source_name": {"type": ["string", "null"]},
+          "metadata": {"type": "object"}
+        }
+      }
+    },
+    "metadata": {"type": "object"}
+  }
+}

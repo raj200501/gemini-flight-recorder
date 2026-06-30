@@ -9,7 +9,7 @@ from jinja2 import Template
 
 from .detectors import detect_trace
 from .importers import dump_model, write_json
-from .models import Detection, Trace, status_for_detections
+from .models import Detection, REPORT_SCHEMA_VERSION, Trace, status_for_detections
 
 
 DISPLAY_PRIORITY = {
@@ -120,6 +120,8 @@ def render_html(
         trace=trace,
         detections=_sorted_detections(detections),
         status=status_for_detections(detections),
+        readiness_score=readiness_score(detections),
+        severity_counts=severity_counts(detections),
         annotations=annotations,
         event_body=_event_body,
         replay_summary=replay_summary,
@@ -135,11 +137,14 @@ def _timeline_payload(
     regression_summary: dict[str, Any] | None,
 ) -> dict[str, Any]:
     return {
+        "schema_version": REPORT_SCHEMA_VERSION,
         "run_id": trace.run_id,
         "source": trace.source,
         "model": trace.model,
         "task": trace.task,
         "status": status_for_detections(detections),
+        "readiness_score": readiness_score(detections),
+        "severity_counts": severity_counts(detections),
         "detections": [dump_model(detection) for detection in detections],
         "replay": replay_summary,
         "regression": regression_summary,
@@ -182,6 +187,19 @@ def _event_body(event: Any) -> str:
     if event.type == "final_answer":
         return event.content or event.output or ""
     return event.content or event.output or event.input or ""
+
+
+def severity_counts(detections: list[Detection]) -> dict[str, int]:
+    counts = {"high": 0, "medium": 0, "low": 0}
+    for detection in detections:
+        counts[detection.severity] += 1
+    return counts
+
+
+def readiness_score(detections: list[Detection]) -> int:
+    counts = severity_counts(detections)
+    score = 100 - (counts["high"] * 35) - (counts["medium"] * 15) - (counts["low"] * 5)
+    return max(0, min(100, score))
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
@@ -386,6 +404,8 @@ HTML_TEMPLATE = """<!doctype html>
           <div class="artifact-grid">
             <div class="artifact"><strong>Run id</strong>{{ trace.run_id or "unknown-run" }}</div>
             <div class="artifact"><strong>Model / source</strong>{{ trace.model }} / {{ trace.source }}</div>
+            <div class="artifact"><strong>Readiness score</strong>{{ readiness_score }} / 100</div>
+            <div class="artifact"><strong>Severity counts</strong>high {{ severity_counts.high }}, medium {{ severity_counts.medium }}, low {{ severity_counts.low }}</div>
           </div>
           <h2>Top failures</h2>
           {% if detections %}

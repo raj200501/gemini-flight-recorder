@@ -19,11 +19,21 @@
       "output": "I can answer from the memo."
     },
     {
-      "type": "final_answer",
+      "type": "retrieval",
       "event_id": "evt-r-002",
       "timestamp": "2026-01-15T11:00:01Z",
+      "source_name": "refund-policy-memo.md",
+      "content": "Refunds above $100 require manager approval.",
+      "metadata": {
+        "source": "refund-policy-memo.md",
+        "citation": "section-2"
+      }
+    },
+    {
+      "type": "final_answer",
+      "event_id": "evt-r-003",
+      "timestamp": "2026-01-15T11:00:02Z",
       "content": "Based on the source, refunds above $100 require manager approval."
     }
   ]
 }
-

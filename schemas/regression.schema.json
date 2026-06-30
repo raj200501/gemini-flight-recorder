@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/gemini-flight-recorder/regression.schema.json",
+  "title": "Gemini Flight Recorder Regression Case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "task",
+    "original_trace",
+    "expected_failures",
+    "must_not_claim",
+    "required_behavior"
+  ],
+  "properties": {
+    "schema_version": {"const": "flightrec.regression.v1"},
+    "case_id": {"type": "string", "minLength": 1},
+    "task": {"type": "string", "minLength": 1},
+    "original_trace": {"type": "string", "minLength": 1},
+    "expected_failures": {"type": "array", "items": {"type": "string"}},
+    "must_not_claim": {"type": "array", "items": {"type": "string"}},
+    "required_behavior": {"type": "string", "minLength": 1},
+    "suggested_prompt": {"type": ["string", "null"]},
+    "source_run_id": {"type": ["string", "null"]}
+  }
+}

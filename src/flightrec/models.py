@@ -10,6 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Severity = Literal["low", "medium", "high"]
 Status = Literal["PASS", "REVIEW_RECOMMENDED", "FAILURE_DETECTED"]
+TRACE_SCHEMA_VERSION = "flightrec.trace.v1"
+FINDING_SCHEMA_VERSION = "flightrec.finding.v1"
+REPORT_SCHEMA_VERSION = "flightrec.report.v1"
+REGRESSION_SCHEMA_VERSION = "flightrec.regression.v1"
 
 
 class Message(BaseModel):
@@ -69,6 +73,7 @@ class ToolResult(BaseModel):
 class Trace(BaseModel):
     model_config = ConfigDict(extra="allow")
 
+    schema_version: str = TRACE_SCHEMA_VERSION
     run_id: str | None = None
     request_id: str | None = None
     source: str = "unknown"
@@ -108,6 +113,7 @@ class Trace(BaseModel):
 
 
 class Detection(BaseModel):
+    schema_version: str = FINDING_SCHEMA_VERSION
     code: str
     label: str
     severity: Severity
@@ -118,6 +124,7 @@ class Detection(BaseModel):
 
 
 class ReplayResult(BaseModel):
+    schema_version: str = "flightrec.replay.v1"
     run_id: str
     mode: str
     original_final_answer: str
@@ -131,6 +138,7 @@ class ReplayResult(BaseModel):
 
 
 class RegressionCase(BaseModel):
+    schema_version: str = REGRESSION_SCHEMA_VERSION
     case_id: str
     task: str
     original_trace: str

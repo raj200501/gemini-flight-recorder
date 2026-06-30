@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/gemini-flight-recorder/report.schema.json",
+  "title": "Gemini Flight Recorder Timeline Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "source",
+    "model",
+    "task",
+    "status",
+    "readiness_score",
+    "severity_counts",
+    "detections",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {"const": "flightrec.report.v1"},
+    "run_id": {"type": ["string", "null"]},
+    "source": {"type": "string"},
+    "model": {"type": "string"},
+    "task": {"type": "string"},
+    "status": {"enum": ["PASS", "REVIEW_RECOMMENDED", "FAILURE_DETECTED"]},
+    "readiness_score": {"type": "integer", "minimum": 0, "maximum": 100},
+    "severity_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["high", "medium", "low"],
+      "properties": {
+        "high": {"type": "integer", "minimum": 0},
+        "medium": {"type": "integer", "minimum": 0},
+        "low": {"type": "integer", "minimum": 0}
+      }
+    },
+    "detections": {"type": "array", "items": {"$ref": "finding.schema.json"}},
+    "replay": {"type": ["object", "null"]},
+    "regression": {"type": ["object", "null"]},
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["type", "annotations"],
+        "properties": {
+          "type": {"type": "string"},
+          "annotations": {"type": "array", "items": {"$ref": "finding.schema.json"}}
+        }
+      }
+    }
+  }
+}

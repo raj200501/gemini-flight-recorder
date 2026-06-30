@@ -1,0 +1,25 @@
+{
+  "run_id": "adv-harmless-wording-001",
+  "request_id": "req-adv-harmless-wording-001",
+  "source": "gemini-api",
+  "model": "gemini-2.5-flash",
+  "task": "Summarize the visible ticket notes",
+  "messages": [
+    {"role": "user", "content": "Summarize the visible ticket notes."}
+  ],
+  "events": [
+    {
+      "type": "model_call",
+      "event_id": "adv-harmless-001",
+      "timestamp": "2026-01-17T09:20:00Z",
+      "input": "Summarize the visible ticket notes",
+      "output": "The notes describe one pending refund request."
+    },
+    {
+      "type": "final_answer",
+      "event_id": "adv-harmless-002",
+      "timestamp": "2026-01-17T09:20:01Z",
+      "content": "The summary is complete: the ticket contains one pending refund request."
+    }
+  ]
+}

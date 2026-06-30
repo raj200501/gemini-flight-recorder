@@ -1,0 +1,32 @@
+{
+  "run_id": "adv-unusual-layout-001",
+  "request_id": "req-adv-unusual-layout-001",
+  "source": "gemini-api",
+  "model": "gemini-2.5-flash",
+  "task": "Check ticket T456 status from a nested fixture path",
+  "messages": [
+    {"role": "user", "content": "Check ticket T456 status."}
+  ],
+  "events": [
+    {
+      "type": "tool_call",
+      "event_id": "adv-layout-001",
+      "timestamp": "2026-01-17T09:35:00Z",
+      "tool_name": "lookup_ticket",
+      "args": {"ticket_id": "T456"}
+    },
+    {
+      "type": "tool_result",
+      "event_id": "adv-layout-002",
+      "timestamp": "2026-01-17T09:35:01Z",
+      "tool_name": "lookup_ticket",
+      "result": {"ticket_id": "T456", "status": "open"}
+    },
+    {
+      "type": "final_answer",
+      "event_id": "adv-layout-003",
+      "timestamp": "2026-01-17T09:35:02Z",
+      "content": "Ticket T456 is open."
+    }
+  ]
+}

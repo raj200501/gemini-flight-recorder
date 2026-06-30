@@ -22,3 +22,11 @@ def test_prompt_injection_agent_triggers_fr006() -> None:
 
 def test_repeated_tool_loop_triggers_fr007() -> None:
     assert "repeated_failed_tool_loop" in labels_for("repeated-tool-loop")
+
+
+def test_safe_run_triggers_no_failures() -> None:
+    assert labels_for("safe-run") == set()
+
+
+def test_grounded_research_agent_triggers_no_unsupported_evidence() -> None:
+    assert labels_for("grounded-research-agent") == set()

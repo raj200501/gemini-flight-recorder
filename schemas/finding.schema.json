@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/gemini-flight-recorder/finding.schema.json",
+  "title": "Gemini Flight Recorder Finding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "code", "label", "severity", "title", "detail", "event_indices", "recommendation"],
+  "properties": {
+    "schema_version": {"const": "flightrec.finding.v1"},
+    "code": {"type": "string", "pattern": "^FR[0-9]{3}$"},
+    "label": {"type": "string"},
+    "severity": {"enum": ["low", "medium", "high"]},
+    "title": {"type": "string"},
+    "detail": {"type": "string"},
+    "event_indices": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+    "recommendation": {"type": "string"}
+  }
+}
