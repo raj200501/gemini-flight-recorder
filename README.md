@@ -196,6 +196,15 @@ Mock replay is detector-aware:
 
 Gemini mode is optional. It requires `GEMINI_API_KEY` and the optional `google-genai` package. The demo and tests do not require a real Gemini API key.
 
+Optional live smoke test:
+
+```bash
+python -m pip install -e ".[dev,gemini]"
+GEMINI_API_KEY=... make live-smoke
+```
+
+The live smoke uses the environment variable only, skips cleanly when credentials or the optional SDK are missing, and does not commit raw Gemini responses.
+
 ## Regression test format
 
 `flightrec promote` writes JSONL cases shaped for future evals:
@@ -284,6 +293,7 @@ Useful targets:
 ```bash
 make demo
 make reports
+make live-smoke
 make clean
 ```
 

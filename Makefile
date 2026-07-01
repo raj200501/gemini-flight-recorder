@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: verify clean demo reports
+.PHONY: verify clean demo reports live-smoke
 
 verify:
 	$(PYTHON) -m pytest
@@ -17,6 +17,9 @@ reports:
 	flightrec report runs/failing-refund-agent --html
 	flightrec report runs/unsupported-research-agent --html
 	flightrec report runs/prompt-injection-agent --html
+
+live-smoke:
+	$(PYTHON) -m pytest tests/test_live_gemini_smoke.py
 
 clean:
 	rm -rf runs .pytest_cache

@@ -19,6 +19,9 @@ dependencies = [
 dev = [
   "pytest>=8",
 ]
+gemini = [
+  "google-genai>=1.0",
+]
 
 [project.scripts]
 flightrec = "flightrec.cli:app"
@@ -29,4 +32,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-
+markers = [
+  "live: optional tests that make a live Gemini API call when credentials and optional SDK are present",
+]
