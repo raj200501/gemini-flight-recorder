@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gemini-flight-recorder"
 version = "0.1.0"
-description = "Local replay and regression tooling for failed Gemini app traces."
+description = "Local replay tool for Gemini app failures: traces to timelines, mock replay, and regression JSONL."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
